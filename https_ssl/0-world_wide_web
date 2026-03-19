@@ -1,21 +1,37 @@
-# Function to get subdomain info using dig and awk
-get_subdomain_info() {
-        local domain=$1
-        local subdomain=$2
+#!/usr/bin/env bash
+# Displays information about subdomains of a given domain.
+# shellcheck disable=SC2086
 
-        dig "$subdomain.$domain" | awk -v sub="$subdomain" '/ANSWER SECTION:/{
-                getline
-                print "The subdomain " sub " is a " $4 " record and points to " $5
-        }'
+# Function to display subdomain info
+display_subdomain_info() {
+    local domain=$1
+    local subdomain=$2
+    local info
+    
+    # Get the DNS record info using dig, matching the example usage
+    info=$(dig "$subdomain.$domain" | grep -A1 'ANSWER SECTION:' | tail -n1)
+    
+    # Extract record type and destination using awk
+    local record_type
+    record_type=$(echo "$info" | awk '{print $4}')
+    local destination
+    destination=$(echo "$info" | awk '{print $5}')
+
+    # Output: The subdomain [SUB_DOMAIN] is a [RECORD_TYPE] record and points to [DESTINATION]
+    echo "The subdomain $subdomain is a $record_type record and points to $destination"
 }
 
-domain=$1
-subdomain=$2
+# Main script logic: accepts domain (required) and subdomain (optional)
+DOMAIN=$1
+SUBDOMAIN=$2
 
-if [ -z $subdomain ]; then
-        for sub in www lb-01 web-01 web-02; do
-                get_subdomain_info "$domain" "$sub"
-        done
+if [ -z "$SUBDOMAIN" ]; then
+    # When only domain is provided, display info for default subdomains in specific order
+    display_subdomain_info "$DOMAIN" "www"
+    display_subdomain_info "$DOMAIN" "lb-01"
+    display_subdomain_info "$DOMAIN" "web-01"
+    display_subdomain_info "$DOMAIN" "web-02"
 else
-        get_subdomain_info "$domain" "$subdomain"
+    # When domain and subdomain are provided, display info for the specified subdomain
+    display_subdomain_info "$DOMAIN" "$SUBDOMAIN"
 fi
